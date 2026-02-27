@@ -146,8 +146,8 @@ function deletePreset() {
 function updateUI() {
     const sCont = document.getElementById('status-container'), 
           iList = document.getElementById('instruction-list'), 
-          iPanel = document.getElementById('instruction-panel');
-    const picker = document.getElementById('servicePicker');
+          iPanel = document.getElementById('instruction-panel'),
+          picker = document.getElementById('servicePicker');
 
     if (!sCont) return; 
     sCont.innerHTML = ""; 
@@ -177,7 +177,12 @@ function updateUI() {
     }
 
     if(iPanel && iList) {
-        iPanel.style.display = (iList.innerHTML && instrVisible) ? 'block' : 'none';
+        const hasContent = iList.innerHTML.trim() !== "";
+
+        iPanel.style.display = hasContent ? 'block' : 'none';
+        
+        iList.style.display = instrVisible ? 'block' : 'none';
+        
         const it = document.getElementById('instr-toggle'); 
         if(it) it.textContent = instrVisible ? '[Hide]' : '[Show]';
     }
@@ -337,5 +342,6 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
