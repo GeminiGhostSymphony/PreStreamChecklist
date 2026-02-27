@@ -211,10 +211,12 @@ async function startVerification(forceService = null) {
     try {
         await Promise.all(checkQueue.map((s) => {
             return new Promise((resolve) => {
-                const probe = document.createElement('script');
                 const start = performance.now();
                 let responded = false;
+                
                 const done = (success, status) => {
+                    if (responded) return; 
+                    responded = true;
                     s.verified = success; 
                     s.lastStatus = status;
                     s.responseTime = Math.round(performance.now() - start);
@@ -222,14 +224,18 @@ async function startVerification(forceService = null) {
                 };
 
                 if (s.key === 'songify') {
-                    const ws = new WebSocket(`ws://127.0.0.1:${s.port}`);
-                    const wsTimeout = setTimeout(() => {
-                        ws.close();
-                        done(false, 'Offline');
-                    }, 2000);
+                    try {
+                        const ws = new WebSocket(`ws://127.0.0.1:${s.port}`);
+                        const wsTimeout = setTimeout(() => {
+                            if (ws.readyState !== WebSocket.CLOSED) ws.close();
+                            done(false, 'Offline');
+                        }, 2000);
 
-                    ws.onopen = () => { clearTimeout(wsTimeout); ws.close(); done(true, 'Connected'); };
-                    ws.onerror = () => { clearTimeout(wsTimeout); done(false, 'Offline'); };
+                        ws.onopen = () => { clearTimeout(wsTimeout); ws.close(); done(true, 'Connected'); };
+                        ws.onerror = () => { clearTimeout(wsTimeout); done(false, 'Offline'); };
+                    } catch (e) {
+                        done(false, 'Offline');
+                    }
                 } else {
                     const probe = document.createElement('script');
                     const timeout = setTimeout(() => {
@@ -355,6 +361,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
