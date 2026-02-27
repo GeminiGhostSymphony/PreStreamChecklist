@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream Checklist & App Verifier</title>
+    <link rel="stylesheet" href="https://geminighostsymphony.github.io/PreStreamChecklist/style.css">
+</head>
+<body>
+  <!-- Web Setup Section -->
+  <div id="setup-view" style="display:none;">
+    <h1>🚀 Pre-Stream Setup Dock</h1>
+    <div id="setup-instructions">
+        <h3>Step 1: Download your personal dock</h3>
+        <p>This tool runs as a local file to ensure your stream settings are saved privately on your computer.</p>
+        <div class="download-area">
+            <button class="main-btn btn-accent" style="width:250px; margin:auto;" onclick="downloadTool()">Download StreamDock.html</button>
+        </div>
+        <h3>Step 2: Add to OBS or StreamLabs</h3>
+        <p><b>For OBS:</b> Go to <code>Docks</code> -> <code>Custom Browser Docks</code>. Name it "Checklist" and paste the local path to the file you just downloaded.</p>
+        <p><b>For StreamLabs:</b> Open the <code>Layout Editor</code>, add a <code>Website</code> element, and select the local file.</p>
+    </div>
+  </div>
+
+  <!-- Dock UI -->
+  <div id="tool-view">
+    <div class="section-header">Apps & Custom Checklist Presets</div>
+    <div class="preset-management">
+        <select id="presetSelector"></select>
+        <div style="display: flex; gap: 6px;">
+            <button id="defaultBtn" class="main-btn btn-warning" onclick="setAsDefault()">Set Default</button>
+            <button class="main-btn btn-error" onclick="deletePreset()">Delete</button>
+        </div>
+    </div>
+    <div class="preset-save-row">
+        <input type="text" id="newPresetName" placeholder="New Preset Name...">
+        <button class="main-btn btn-accent" style="width:80px;" onclick="savePreset()">Save</button>
+    </div>
+    <div class="section-header">Custom Checklist</div>
+    <div class="btn-row">
+        <button class="main-btn btn-success" onclick="bulkCheck(true)">Check All</button>
+        <button class="main-btn btn-warning" onclick="bulkCheck(false)">Uncheck All</button>
+    </div>
+    <div id="checklist-container"></div>
+    <button class="main-btn btn-accent" style="width: 100%; margin-top: 8px;" onclick="addItem()">+ ADD REMINDER</button>
+    <div class="section-header">Verification</div>
+    <div class="verification-settings">
+        <div class="settings-row">
+            <label class="switch-container">
+                <div class="switch"><input type="checkbox" id="autoScanToggle" onchange="toggleAutoScan(this.checked)"><span class="slider"></span></div>
+                <span>Auto-Scan</span>
+            </label>
+            <div id="timerDisplay" class="timer-badge" style="display:none;">30s</div>
+        </div>
+        <div class="settings-row">
+            <label class="switch-container">
+                <div class="switch"><input type="checkbox" id="debugToggle" onchange="toggleDebug(this.checked)"><span class="slider"></span></div>
+                <span>Troubleshooting Mode</span>
+            </label>
+        </div>
+    </div>
+    <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <select id="servicePicker" style="flex: 2;"></select>
+        <input type="number" id="customPort" style="width:70px" placeholder="Port">
+        <button class="main-btn btn-accent" onclick="addService()">Add</button>
+    </div>
+    <div id="status-container"></div>
+    <div class="btn-row" style="margin-top:15px;">
+        <button id="recheck-btn" class="main-btn btn-success" onclick="manualResetScan()"><span id="warning-icon" style="display:none;">⚠️</span> Re-Check Apps</button>
+        <button class="main-btn btn-error" onclick="clearAll()">Reset Everything</button>
+    </div>
+    <div id="instruction-panel" class="instr-panel">
+        <div class="instr-header" style="display:flex; justify-content:space-between;">
+            <span>Setup Required:</span><span class="toggle-link" onclick="toggleInstructions()">[Hide]</span>
+        </div>
+        <div id="instruction-list"></div>
+    </div>
+  </div>
+
+  <script src="https://geminighostsymphony.github.io/PreStreamChecklist/engine.js"></script>
+  <script>
+    if (window.location.protocol !== 'file:') {
+        document.getElementById('setup-view').style.display = 'block';
+        document.getElementById('tool-view').style.opacity = '0.3';
+        document.getElementById('tool-view').style.pointerEvents = 'none';
+    }
+    function downloadTool() {
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelector('#setup-view').remove();
+        clone.querySelector('#tool-view').style.opacity = '1';
+        clone.querySelector('#tool-view').style.pointerEvents = 'auto';
+        clone.querySelector('script:last-of-type').remove();
+        const blob = new Blob([clone.outerHTML], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'StreamDock.html';
+        a.click();
+    }
+  </script>
+</body>
+</html>
