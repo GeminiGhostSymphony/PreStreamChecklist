@@ -172,7 +172,7 @@ function updateUI() {
     if (picker && picker.value && setupHelp[picker.value]) {
         const isAlreadyAdded = activeServices.some(s => s.key === picker.value);
         if (!isAlreadyAdded && iList) {
-            iList.innerHTML += `<div class="instr-item" style="border-left: 3px solid var(--accent); padding-left: 8px; opacity: 0.8;"><i>Preview:</i> ${setupHelp[picker.value]}</div>`;
+            iList.innerHTML += `<div class="instr-item" style="border-left: 3px solid var(--accent); padding-left: 8px; opacity: 0.8;">${setupHelp[picker.value]}</div>`;
         }
     }
 
@@ -342,6 +342,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
