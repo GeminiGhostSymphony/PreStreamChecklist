@@ -235,7 +235,7 @@ async function startVerification(forceService = null) {
             });
         }));
     } catch (e) {
-        console.error("Verification Error:" e);
+        console.error("Verification Error:", e);
     } finally {
         isScanning = false;
         updateUI();
@@ -341,6 +341,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
