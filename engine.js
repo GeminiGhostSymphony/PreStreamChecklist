@@ -133,46 +133,47 @@ async function startVerification() {
 
     isScanning = true;
     
-    checkQueue.forEach(s => {
-        s.lastStatus = `Pinging Port ${s.port}...`;
-    });
-    updateUI(); 
+    const bridge = window.localVerifyBridge;
+    if (!bridge) {
+        console.error("Local verification bridge not found!");
+        isScanning = false;
+        return;
+    }
 
     try {
-        await Promise.all(checkQueue.map((s) => {
-            return new Promise((resolve) => {
-                const probe = document.createElement('script');
-                const start = performance.now();
-                let hasResponded = false;
-
-                const cleanup = (success, status) => {
-                    if (hasResponded) return;
-                    hasResponded = true;
-                    clearTimeout(timeout);
-                    probe.onerror = probe.onload = null;
-                    if (probe.parentNode) probe.parentNode.removeChild(probe);
-                    
-                    s.verified = success;
-                    s.lastStatus = status;
-                    s.responseTime = Math.round(performance.now() - start);
-                    resolve();
-                };
-
-                const timeout = setTimeout(() => cleanup(false, 'Offline/Timeout'), 1500);
-
-                probe.onerror = () => cleanup(true, 'Connected');
-                probe.onload = () => cleanup(true, 'Connected');
-
-                probe.src = `http://127.0.0.1:${s.port}/ping?t=${Date.now()}`;
-                document.head.appendChild(probe);
-            });
+        await Promise.all(checkQueue.map(async (s) => {
+            s.lastStatus = `Pinging ${s.port}...`;
+            updateUI(); 
+            
+            const result = await bridge(s);
+            
+            s.verified = result.success;
+            s.lastStatus = result.status;
+            s.responseTime = result.time;
         }));
     } catch (e) {
-        console.error("Verification Error:", e);
+        console.error("Scan error:", e);
     } finally {
         isScanning = false;
-        updateUI(); 
+        updateUI();
     }
+}
+
+function manualResetScan() { 
+    isScanning = false; 
+    activeServices.forEach(s => { 
+        s.verified = false; 
+        s.lastStatus = 'Waiting'; 
+    }); 
+    
+    if (autoScanEnabled) {
+        timeLeft = 30;
+        const display = document.getElementById('timerDisplay');
+        if (display) display.textContent = '30s';
+    }
+
+    updateUI(); 
+    setTimeout(() => startVerification(), 100);
 }
 
 function manualResetScan() { 
@@ -264,6 +265,7 @@ function forceInit() {
 }
 
 forceInit();
+
 
 
 
