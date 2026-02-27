@@ -1,6 +1,6 @@
 /* PreStreamChecklist Engine  */
 const setupHelp = { 
-    mixitup: "<b>MixItUp</b>: Port 8111.", streamerbot: "<b>Streamer.bot</b>: Port 8080.", veadotube: "<b>Veadotube</b>: Port 57073.", vts: "<b>VTube Studio</b>: Port 8001.", spotify: "<b>Spotify</b>: Use Desktop App.", crowdcontrol: "<b>Crowd Control</b>: Port 58430.", sammi: "<b>SAMMI</b>: Port 9450.", voicemod: "<b>Voicemod</b>: Port 59129.", camo: "<b>Camo Studio</b>: Use Port 5555 or 8080."
+    mixitup: "<b>MixItUp</b>: Port 8111.", streamerbot: "<b>Streamer.bot</b>: Port 8080.", veadotube: "<b>Veadotube</b>: Port may need updating. Click Program Settings in Veadotube Mini, ensure Websocket Server is On, then replace Port numbers with those after the ':' in the 'Serving At' field.", vts: "<b>VTube Studio</b>: Port 8001.", spotify: "<b>Spotify</b>: Must Use Desktop App.", crowdcontrol: "<b>Crowd Control</b>: Port 58430.", sammi: "<b>SAMMI</b>: Port 9450.", voicemod: "<b>Voicemod</b>: Port 59129.", camo: "<b>Camo Studio</b>: Use Port 5555 or 8080."
 };
 
 const serviceDefs = [ 
@@ -313,3 +313,4 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
