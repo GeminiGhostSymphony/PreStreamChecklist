@@ -198,13 +198,7 @@ function updateUI() {
 async function startVerification(forceService = null) {
     if (isScanning) return;
     
-    let checkQueue = [];
-    if (forceService) {
-        checkQueue = [forceService];
-    } else {
-        checkQueue = activeServices.filter(s => !s.verified);
-    }
-
+    let checkQueue = forceService ? [forceService] : activeServices.filter(s => !s.verified);
     if (checkQueue.length === 0) return;
     
     isScanning = true;
@@ -225,17 +219,24 @@ async function startVerification(forceService = null) {
                     clearTimeout(timeout);
                     probe.onerror = probe.onload = null;
                     if (probe.parentNode) probe.parentNode.removeChild(probe);
-                    s.verified = success; s.lastStatus = status;
+                    s.verified = success; 
+                    s.lastStatus = status;
                     s.responseTime = Math.round(performance.now() - start);
                     resolve();
                 };
-                const timeout = setTimeout(() => done(false, 'Offline'), 2000);
+                const timeout = setTimeout(() => done(false, 'Offline'), 2500);
                 probe.onerror = () => done(true, 'Connected');
                 probe.onload = () => done(true, 'Connected');
-                probe.src = `http://127.0.0.1:${s.port}/?t=${Date.now()}`;
+
+                const endpoint = s.key === 'songify' ? '/auth' : '';
+                probe.src = `http://127.0.0.1:${s.port}/${endpoint}?t=${Date.now()}`;
+
+                probe.crossOrigin = "anonymous";
                 document.head.appendChild(probe);
             });
         }));
+    } catch (e) {
+        console.error("Verification Error:" e);
     } finally {
         isScanning = false;
         updateUI();
@@ -341,6 +342,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
