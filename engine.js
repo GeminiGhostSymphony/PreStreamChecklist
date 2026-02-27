@@ -15,7 +15,10 @@ let defaultPreset = localStorage.getItem(PREFIX+'default_preset') || "";
 let instrVisible = JSON.parse(localStorage.getItem(PREFIX+'instr_vis') ?? 'true');
 let autoScanEnabled = JSON.parse(localStorage.getItem(PREFIX+'auto_scan') ?? 'false');
 let debugEnabled = JSON.parse(localStorage.getItem(PREFIX+'debug') ?? 'false');
-let autoScanTimer = null, timeLeft = 30, isScanning = false;
+let autoScanTimer = null;
+let timeLeft = 30
+let isScanning = false;
+let displayElement = null; 
 
 const save = () => {
     localStorage.setItem(PREFIX+'items', JSON.stringify(items));
@@ -67,9 +70,15 @@ function savePreset() {
 function loadPreset(name) {
     if (!name || !presets[name]) return;
     isScanning = false;
-    activeServices = JSON.parse(JSON.stringify(presets[name].svc || [])).map(s => ({...s, verified: false, lastStatus: 'Waiting', responseTime: 0}));
+    
+    activeServices = JSON.parse(JSON.stringify(presets[name].svc || []));
+    
+    activeServices.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+
     if (presets[name].checklist) items = JSON.parse(JSON.stringify(presets[name].checklist));
-    renderChecklist(); updateUI(); 
+    
+    renderChecklist(); 
+    updateUI(); 
     setTimeout(() => startVerification(), 200); 
     save();
 }
@@ -90,8 +99,19 @@ function addService() {
     const portInput = document.getElementById('customPort');
     const port = (portInput && portInput.value) ? portInput.value : p.options[p.selectedIndex].dataset.port;
     if (!activeServices.find(s => s.key === p.value)) { 
-        activeServices.push({ key: p.value, port: parseInt(port), name: p.options[p.selectedIndex].text, verified: false, lastStatus: 'Waiting', responseTime: 0 }); 
-        updateUI(); startVerification(); 
+        activeServices.push({ 
+            key: p.value, 
+            port: parseInt(port), 
+            name: p.options[p.selectedIndex].text, 
+            verified: false, 
+            lastStatus: 'Waiting', 
+            responseTime: 0 
+        }); 
+        
+        activeServices.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+        
+        updateUI(); 
+        startVerification(); 
     }
 }
 
@@ -103,6 +123,23 @@ function updatePort(index, newPort) {
     save(); 
     updateUI(); 
     startVerification(service); 
+}
+
+function setAsDefault() { 
+    const name = document.getElementById('presetSelector').value; 
+    if (!name) return alert("Select a preset first"); 
+    defaultPreset = name; 
+    updatePresetDropdown(); 
+    save(); 
+}
+
+function deletePreset() { 
+    const name = document.getElementById('presetSelector').value; 
+    if (!name || !confirm(`Delete preset "${name}"?`)) return; 
+    if (defaultPreset === name) defaultPreset = ""; 
+    delete presets[name]; 
+    updatePresetDropdown(); 
+    save(); 
 }
 
 function updateUI() {
@@ -194,9 +231,11 @@ function manualResetScan() {
 function startAutoScanLoop() {
     if (autoScanTimer) clearInterval(autoScanTimer);
     timeLeft = 30;
+
+    displayElement = document.getElementById('timerDisplay');
     
     autoScanTimer = setInterval(() => {
-        const display = document.getElementById('timerDisplay');
+        if (!displayElement) displayElement = document.getElementById('timerDisplay');
 
         if (!autoScanEnabled) { 
             if(display) display.style.display = 'none'; 
@@ -205,9 +244,9 @@ function startAutoScanLoop() {
         }
 
         timeLeft--;
-        if (display) { 
-            display.style.display = 'block'; 
-            display.textContent = timeLeft + 's'; 
+        if (displayElement) { 
+            displayElement.style.display = 'block'; 
+            displayElement.textContent = timeLeft + 's'; 
         }
 
         if (timeLeft <= 0) { 
@@ -251,10 +290,26 @@ function forceInit() {
 }
 forceInit();
 
-window.savePreset = savePreset; window.manualResetScan = manualResetScan; window.toggleAutoScan = (v) => { autoScanEnabled = v; save(); updateUI(); if(v) startAutoScanLoop(); };
+window.setAsDefault = setAsDefault; 
+window.deletePreset = deletePreset; 
+window.savePreset = savePreset; 
+window.manualResetScan = manualResetScan;
+window.toggleAutoScan = (v) => { autoScanEnabled = v; save(); updateUI(); if(v) startAutoScanLoop(); };
 window.toggleDebug = (v) => { debugEnabled = v; save(); updateUI(); };
-window.addItem = addItem; window.bulkCheck = bulkCheck; window.toggleItem = toggleItem;
-window.setAsDefault = setAsDefault; window.deletePreset = deletePreset; window.clearAll = () => { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } };
-window.toggleInstructions = () => { instrVisible = !instrVisible; updateUI(); };
+window.addItem = addItem; 
+window.bulkCheck = bulkCheck; 
+window.toggleItem = toggleItem;
+window.toggleInstructions = () => { 
+    instrVisible = !instrVisible; 
+    displayElement = document.getElementById('timerDisplay');
+    updateUI(); 
+};
 
-
+window.clearAll = () => { 
+    if(confirm("Clear everything?")) { 
+        items=[]; 
+        activeServices=[]; 
+        renderChecklist(); 
+        updateUI(); 
+    } 
+};
