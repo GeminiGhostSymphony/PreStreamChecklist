@@ -78,33 +78,7 @@
   </div>
 
   <script src="https://geminighostsymphony.github.io/PreStreamChecklist/engine.js" crossorigin="anonymous"></script>
-  <script>
-    async function localVerifyBridge(s) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            const start = performance.now();
-            let done = false;
-
-            const finish = (success, status) => {
-                if (done) return;
-                done = true;
-                clearTimeout(timeout);
-                img.onload = img.onerror = null;
-                resolve({ 
-                    success, 
-                    status, 
-                    time: Math.round(performance.now() - start) 
-                });
-            };
-
-            const timeout = setTimeout(() => finish(false, 'Offline'), 1500);
-            img.onload = () => finish(true, 'Connected');
-            img.onerror = () => finish(true, 'Connected'); 
-            
-            img.src = `http://127.0.0.1:${s.port}/favicon.ico?t=${Date.now()}`;
-        });
-    }
-      
+  <script>  
     if (window.location.protocol !== 'file:') {
         document.getElementById('setup-view').style.display = 'block';
         document.getElementById('tool-view').style.opacity = '0.3';
@@ -135,6 +109,7 @@
   </script>
 </body>
 </html>
+
 
 
 
