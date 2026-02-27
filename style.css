@@ -46,21 +46,27 @@ code { background: rgba(150,150,150,0.2); padding: 2px 4px; border-radius: 4px; 
     font-size: 11px;
     text-transform: uppercase;
     color: var(--accent);
-    margin-bottom: 10px;
     border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     padding-bottom: 5px;
     user-select: none;
 }
+#instruction-list {
+    margin-top: 5px;
+}
 .instr-item {
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
     font-size: 11px;
     line-height: 1.5;
 }
+.instr-item:first-child {
+    border-top: none;
+    padding-top: 5px;
+}
 .instr-item:last-child {
     border-bottom: none;
-    margin-bottom: 0;
+    padding-bottom: 5px;
 }
 
 /* Buttons */
@@ -100,4 +106,5 @@ select, input { background: var(--panel); color: var(--text); border: 1px solid 
 .instr-panel { margin-top: 15px; padding: 12px; background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 6px; border: 1px dashed var(--accent); font-size: 12px; display: none; }
 
 .toggle-link { cursor: pointer; text-decoration: underline; font-size: 11px; }
+
 
