@@ -76,19 +76,60 @@
     </div>
   </div>
 
-  <script src="https://geminighostsymphony.github.io/PreStreamChecklist/engine.js"></script>
   <script>
+    const CONFIG = {
+        engine: "https://geminighostsymphony.github.io/PreStreamChecklist/engine.js",
+        style: "https://geminighostsymphony.github.io/PreStreamChecklist/style.csss"
+    };
+
+    async function boot() {
+        try {
+            // Fetch and inject JS
+            const resp = await fetch(CONFIG.engine);
+            const scriptText = await resp.text();
+            const scriptEl = document.createElement('script');
+            scriptEl.textContent = scriptText;
+            document.body.appendChild(scriptEl);
+
+            // Fetch and inject CSS 
+            const cssResp = await fetch(CONFIG.style);
+            const cssText = await cssResp.text();
+            const styleEl = document.createElement('style');
+            styleEl.textContent = cssText;
+            document.head.appendChild(styleEl);
+
+            // Show content
+            document.getElementById('loading-overlay').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            
+            // Trigger engine init if the script didn't auto-run
+            if (typeof renderChecklist === 'function') {
+                renderChecklist();
+                updateUI();
+            }
+        } catch (e) {
+            document.getElementById('loading-overlay').innerHTML = 
+                `<div style="color:red">Engine Load Failed.<br>Check your internet connection.</div>`;
+            console.error("Boot error:", e);
+        }
+    }
+
     if (window.location.protocol !== 'file:') {
         document.getElementById('setup-view').style.display = 'block';
         document.getElementById('tool-view').style.opacity = '0.3';
         document.getElementById('tool-view').style.pointerEvents = 'none';
+    } else {
+        boot();
     }
+
     function downloadTool() {
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#setup-view').remove();
         clone.querySelector('#tool-view').style.opacity = '1';
         clone.querySelector('#tool-view').style.pointerEvents = 'auto';
-        clone.querySelector('script:last-of-type').remove();
+        clone.querySelector('#loading-overlay').style.display = 'block';
+        clone.querySelector('#main-content').style.display = 'none';
+        
         const blob = new Blob([clone.outerHTML], { type: 'text/html' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -97,4 +138,5 @@
     }
   </script>
 </body>
+
 </html>
