@@ -218,18 +218,22 @@ async function startVerification(forceService = null) {
                     if (responded) return; responded = true;
                     clearTimeout(timeout);
                     probe.onerror = probe.onload = null;
-                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                    if (probe.parentNode && document.head.contains(probe)) {
+                        document.head.removeChild(probe);
+                    }
                     s.verified = success; 
                     s.lastStatus = status;
                     s.responseTime = Math.round(performance.now() - start);
                     resolve();
                 };
-                const timeout = setTimeout(() => done(false, 'Offline'), 2500);
+                const timeoutLimit = (s.key === 'songify') ? 2500 : 1500;
+                const timeout = setTimeout(() => done(false, 'Offline'), timeoutLimit);
+                
                 probe.onerror = () => done(true, 'Connected');
                 probe.onload = () => done(true, 'Connected');
 
-                const targetPath = s.key === 'songify' ? '/auth' : '/';
-                probe.src = `http://127.0.0.1:${s.port}${targetPath}?t=${Date.now()}`;
+                const targetPath = (s.key === 'songify') ? 'index.html' : 'ping';
+                probe.src = `http://127.0.0.1:${s.port}/${targetPath}?t=${Date.now()}`;
 
                 document.head.appendChild(probe);
             });
@@ -341,6 +345,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
