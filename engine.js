@@ -34,7 +34,6 @@ function renderChecklist() {
         const row = document.createElement('div'); row.className = `item-row ${item.done ? 'is-done' : ''}`;
         row.draggable = true;
         row.innerHTML = `<div class="drag-handle">⠿</div><input type="checkbox" class="cb" ${item.done ? 'checked' : ''} onchange="toggleItem(${i})"><input type="text" class="item-text" value="${item.text.replace(/"/g, '&quot;')}" oninput="items[${i}].text=this.value;save()"><span style="cursor:pointer;color:var(--error);opacity:0.6;padding:0 5px;font-weight:bold;" onclick="items.splice(${i},1);renderChecklist();save()">✕</span>`;
-        
         row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text', i); row.classList.add('dragging'); });
         row.addEventListener('dragend', () => { row.classList.remove('dragging'); document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over')); });
         row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drag-over'); });
@@ -43,7 +42,7 @@ function renderChecklist() {
             e.preventDefault();
             const from = parseInt(e.dataTransfer.getData('text'));
             const to = i;
-            const temp = items.splice(from, 1)[0];
+            const temp = items.splice(from, 1);
             items.splice(to, 0, temp);
             renderChecklist(); save();
         });
@@ -57,13 +56,11 @@ function addItem() { items.push({text: "New Task", done: false}); renderChecklis
 
 function savePreset() { 
     const nameInput = document.getElementById('newPresetName');
-    const name = nameInput.value.trim(); 
+    const name = nameInput ? nameInput.value.trim() : ""; 
     if (!name) return alert("Enter a name"); 
-    
-    // Clean status for saving
     const cleanSvc = activeServices.map(s => ({...s, verified: false, lastStatus: 'Waiting', responseTime: 0}));
     presets[name] = { svc: cleanSvc, checklist: JSON.parse(JSON.stringify(items)) }; 
-    nameInput.value = "";
+    if(nameInput) nameInput.value = "";
     updatePresetDropdown(); save(); 
 }
 
@@ -90,7 +87,8 @@ function updatePresetDropdown() {
 
 function addService() {
     const p = document.getElementById('servicePicker'); if (!p || !p.value) return;
-    const port = document.getElementById('customPort').value || p.options[p.selectedIndex].dataset.port;
+    const portInput = document.getElementById('customPort');
+    const port = (portInput && portInput.value) ? portInput.value : p.options[p.selectedIndex].dataset.port;
     if (!activeServices.find(s => s.key === p.value)) { 
         activeServices.push({ key: p.value, port: parseInt(port), name: p.options[p.selectedIndex].text, verified: false, lastStatus: 'Waiting', responseTime: 0 }); 
         updateUI(); startVerification(); 
@@ -99,30 +97,28 @@ function addService() {
 
 function updatePort(index, newPort) { activeServices[index].port = parseInt(newPort) || 0; activeServices[index].verified = false; activeServices[index].lastStatus = 'Waiting'; save(); updateUI(); startVerification(); }
 
-function copyLog(key) {
-    const s = activeServices.find(x => x.key === key);
-    navigator.clipboard.writeText(`APP: ${s.name}\nPORT: ${s.port}\nSTATUS: ${s.lastStatus}\nTIME: ${s.responseTime || 0}ms\nUA: ${navigator.userAgent}`).then(() => alert("Log Copied!"));
-}
-
 function updateUI() {
     const sCont = document.getElementById('status-container'), iList = document.getElementById('instruction-list'), iPanel = document.getElementById('instruction-panel');
-    if (!sCont) return; sCont.innerHTML = ""; iList.innerHTML = ""; let hasUnverified = false;
+    if (!sCont) return; sCont.innerHTML = ""; if(iList) iList.innerHTML = ""; let hasUnverified = false;
     
     activeServices.forEach((s, i) => {
         if (!s.verified) hasUnverified = true;
         const div = document.createElement('div'); div.className = 'status-box';
         const statusText = s.verified ? 'OK' : (s.lastStatus || 'Waiting');
-        const color = s.verified ? 'var(--success)' : (statusText.includes('Checking') ? 'var(--warning)' : 'var(--error)');
-        div.innerHTML = `<div class="status-top"><span style="color:${color}">● ${s.name}: ${statusText}</span><span style="cursor:pointer;opacity:0.5;" onclick="activeServices.splice(${i},1);updateUI();">✕</span></div><div class="status-controls"><span>Port: <input type="number" class="port-edit" value="${s.port}" onchange="updatePort(${i}, this.value)"></span></div>${debugEnabled ? `<div class="debug-area"><div style="font-size:10px; opacity:0.8;">Status: ${s.lastStatus} (${s.responseTime || 0}ms)</div>${!s.verified ? `<button class="main-btn btn-accent" style="padding:2px 5px; font-size:9px; margin-top:5px; width:fit-content;" onclick="copyLog('${s.key}')">Copy Log</button>` : ''}</div>` : ''}`;
+        let color = s.verified ? 'var(--success)' : 'var(--error)';
+        if (statusText.includes('Checking')) color = 'var(--warning)';
+
+        div.innerHTML = `<div class="status-top"><span style="color:${color}">● ${s.name}: ${statusText}</span><span style="cursor:pointer;opacity:0.5;" onclick="activeServices.splice(${i},1);updateUI();">✕</span></div><div class="status-controls"><span>Port: <input type="number" class="port-edit" value="${s.port}" onchange="updatePort(${i}, this.value)"></span></div>${debugEnabled ? `<div class="debug-area"><div style="font-size:10px; opacity:0.8;">Status: ${s.lastStatus} (${s.responseTime || 0}ms)</div></div>` : ''}`;
         sCont.appendChild(div);
-        if (setupHelp[s.key]) iList.innerHTML += `<div style="margin-bottom:6px;">${setupHelp[s.key]}</div>`;
+        if (iList && setupHelp[s.key]) iList.innerHTML += `<div style="margin-bottom:6px;">${setupHelp[s.key]}</div>`;
     });
     
-    document.getElementById('recheck-btn').classList.toggle('needs-attention', hasUnverified && !autoScanEnabled);
-    document.getElementById('warning-icon').style.display = (hasUnverified && !autoScanEnabled) ? 'inline' : 'none';
-    iPanel.style.display = (iList.innerHTML && instrVisible) ? 'block' : 'none';
-    document.getElementById('instr-toggle').textContent = instrVisible ? '[Hide]' : '[Show]';
-    document.getElementById('timerDisplay').style.display = autoScanEnabled ? 'block' : 'none';
+    const rb = document.getElementById('recheck-btn'); if(rb) rb.classList.toggle('needs-attention', hasUnverified && !autoScanEnabled);
+    const wi = document.getElementById('warning-icon'); if(wi) wi.style.display = (hasUnverified && !autoScanEnabled) ? 'inline' : 'none';
+    if(iPanel && iList) iPanel.style.display = (iList.innerHTML && instrVisible) ? 'block' : 'none';
+    
+    const it = document.getElementById('instr-toggle'); if(it) it.textContent = instrVisible ? '[Hide]' : '[Show]';
+    const td = document.getElementById('timerDisplay'); if(td) td.style.display = autoScanEnabled ? 'block' : 'none';
     save();
 }
 
@@ -130,7 +126,6 @@ async function startVerification() {
     if (isScanning) return;
     const checkQueue = activeServices.filter(s => !s.verified);
     if (checkQueue.length === 0) return;
-
     isScanning = true;
     
     checkQueue.forEach(s => s.lastStatus = `Checking ${s.port}...`);
@@ -142,90 +137,45 @@ async function startVerification() {
                 const probe = document.createElement('script');
                 const start = performance.now();
                 let responded = false;
-
-                const cleanup = (success, status) => {
-                    if (responded) return;
-                    responded = true;
+                const done = (success, status) => {
+                    if (responded) return; responded = true;
                     clearTimeout(timeout);
                     probe.onerror = probe.onload = null;
                     if (probe.parentNode) probe.parentNode.removeChild(probe);
-                    s.verified = success;
-                    s.lastStatus = status;
+                    s.verified = success; s.lastStatus = status;
                     s.responseTime = Math.round(performance.now() - start);
                     resolve();
                 };
-
-                const timeout = setTimeout(() => cleanup(false, 'Offline'), 1500);
-
-                probe.onerror = () => cleanup(true, 'Connected');
-                probe.onload = () => cleanup(true, 'Connected');
-
+                const timeout = setTimeout(() => done(false, 'Offline'), 1500);
+                probe.onerror = () => done(true, 'Connected');
+                probe.onload = () => done(true, 'Connected');
                 probe.src = `http://127.0.0.1:${s.port}/ping?t=${Date.now()}`;
                 document.head.appendChild(probe);
             });
         }));
-    } catch (e) {
-        console.error("Scan Error:", e);
     } finally {
         isScanning = false;
-        updateUI(); 
+        updateUI();
     }
 }
 
 function manualResetScan() { 
-    if (autoScanTimer) clearInterval(autoScanTimer);
-    isScanning = false; 
-    activeServices.forEach(s => { 
-        s.verified = false; 
-        s.lastStatus = 'Waiting'; 
-    }); 
-    
-    timeLeft = 30;
-    const display = document.getElementById('timerDisplay');
-    if (display) display.textContent = '30s';
-
+    isScanning = false;
+    activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; }); 
+    if (autoScanEnabled) { timeLeft = 30; const td = document.getElementById('timerDisplay'); if(td) td.textContent = '30s'; }
     updateUI(); 
-
-    if (autoScanEnabled) startAutoScanLoop();
-    
-    setTimeout(() => startVerification(), 100);
-}
-
-function clearAll() { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } }
-function toggleInstructions() { instrVisible = !instrVisible; updateUI(); }
-function toggleDebug(val) { debugEnabled = val; save(); updateUI(); }
-function setAsDefault() { const name = document.getElementById('presetSelector').value; if (!name) return alert("Select a preset first"); defaultPreset = name; updatePresetDropdown(); save(); }
-function deletePreset() { const name = document.getElementById('presetSelector').value; if (!name || !confirm(`Delete preset "${name}"?`)) return; if (defaultPreset === name) defaultPreset = ""; delete presets[name]; updatePresetDropdown(); save(); }
-
-function toggleAutoScan(val) { 
-    autoScanEnabled = val; 
-    save(); 
-    updateUI(); 
-    if (val) startAutoScanLoop(); 
-    else { if (autoScanTimer) clearInterval(autoScanTimer); autoScanTimer = null; }
+    setTimeout(() => startVerification(), 50);
 }
 
 function startAutoScanLoop() {
     if (autoScanTimer) clearInterval(autoScanTimer);
     timeLeft = 30;
-    
     autoScanTimer = setInterval(() => {
-        if (!autoScanEnabled) {
-            clearInterval(autoScanTimer);
-            return;
-        }
-
+        const display = document.getElementById('timerDisplay');
+        if (!autoScanEnabled) { if(display) display.style.display = 'none'; clearInterval(autoScanTimer); return; }
         timeLeft--;
-        if (display) { 
-            display.style.display = 'block';
-            display.textContent = timeLeft + 's';
-        }
-
-        if (timeLeft <= 0) {
-            timeLeft = 30;
-            isScanning = false; 
-            startVerification();
-        }
+        if (display) { display.style.display = 'block'; display.textContent = timeLeft + 's'; }
+        if (timeLeft <= 0) { timeLeft = 30; isScanning = false; startVerification(); }
     }, 1000);
 }
 
@@ -234,24 +184,20 @@ function forceInit() {
     const pSelector = document.getElementById('presetSelector');
     if (!picker || !pSelector) return setTimeout(forceInit, 50);
 
-    document.getElementById('autoScanToggle').checked = autoScanEnabled;
-    document.getElementById('debugToggle').checked = debugEnabled;
+    const asT = document.getElementById('autoScanToggle'); if(asT) asT.checked = autoScanEnabled;
+    const dbT = document.getElementById('debugToggle'); if(dbT) dbT.checked = debugEnabled;
     
     updatePresetDropdown();
     pSelector.onchange = (e) => loadPreset(e.target.value);
 
     picker.innerHTML = '<option value="">-- Select App --</option>';
     serviceDefs.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => { 
-        const opt = document.createElement('option'); 
-        opt.value = s.key; 
-        opt.textContent = s.name; 
-        opt.dataset.port = s.port; 
-        picker.appendChild(opt); 
+        const opt = document.createElement('option'); opt.value = s.key; opt.textContent = s.name; opt.dataset.port = s.port; picker.appendChild(opt); 
     });
 
     picker.onchange = (e) => { 
         const sel = e.target.options[e.target.selectedIndex]; 
-        document.getElementById('customPort').value = sel.value ? (sel.dataset.port || "") : ""; 
+        const cp = document.getElementById('customPort'); if(cp) cp.value = sel.value ? (sel.dataset.port || "") : ""; 
     };
 
     if (defaultPreset && presets[defaultPreset]) { 
@@ -264,10 +210,10 @@ function forceInit() {
     renderChecklist(); 
     updateUI();
 }
-
 forceInit();
 
-
-
-
-
+window.savePreset = savePreset; window.manualResetScan = manualResetScan; window.toggleAutoScan = (v) => { autoScanEnabled = v; save(); updateUI(); if(v) startAutoScanLoop(); };
+window.toggleDebug = (v) => { debugEnabled = v; save(); updateUI(); };
+window.addItem = addItem; window.bulkCheck = bulkCheck; window.toggleItem = toggleItem;
+window.setAsDefault = setAsDefault; window.deletePreset = deletePreset; window.clearAll = () => { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } };
+window.toggleInstructions = () => { instrVisible = !instrVisible; updateUI(); };
