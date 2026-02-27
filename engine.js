@@ -131,25 +131,45 @@ async function startVerification() {
     if (checkQueue.length === 0) return;
 
     isScanning = true;
-    await Promise.all(checkQueue.map(async (s) => {
-        const start = performance.now();
-        try {
-            await fetch(`http://127.0.0.1:${s.port}`, { mode: 'no-cors', cache: 'no-cache' });
-            s.verified = true;
-            s.lastStatus = 'Connected';
-        } catch (e) {
-            s.verified = false;
-            s.lastStatus = 'Offline/Refused';
-        }
-        s.responseTime = Math.round(performance.now() - start);
+    updateUI();
+    
+    return new Promise((resolve) => {
+            const img = new Image();
+            const start = performance.now();
+            
+            img.onerror = () => {
+                s.verified = true;
+                s.lastStatus = 'Connected';
+                s.responseTime = Math.round(performance.now() - start);
+                resolve();
+            };
+            
+            const timeout = setTimeout(() => {
+                img.src = "";
+                s.verified = false;
+                s.lastStatus = 'Offline/Refused';
+                s.responseTime = Math.round(performance.now() - start);
+                resolve();
+            }, 1500);
+
+            img.src = `http://127.0.0.1:${s.port}/favicon.ico?t=${Date.now()}`;
+        });
     }));
     isScanning = false; 
     updateUI(); 
 }
 
 function manualResetScan() { 
-    activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; }); 
-    if (autoScanEnabled) { timeLeft = 30; document.getElementById('timerDisplay').textContent = '30s'; }
+    isScanning = false;
+    activeServices.forEach(s => { 
+        s.verified = false; 
+        s.lastStatus = 'Waiting'; 
+    }); 
+    if (autoScanEnabled) { 
+        timeLeft = 30; 
+        const display = document.getElementById('timerDisplay');
+        if (display) display.textContent = '30s';
+    }
     updateUI(); 
     startVerification(); 
 }
@@ -171,17 +191,18 @@ function toggleAutoScan(val) {
 function startAutoScanLoop() { 
     if (autoScanTimer) clearInterval(autoScanTimer); 
     timeLeft = 30; 
-    const display = document.getElementById('timerDisplay');
-    if(display) display.textContent = '30s';
-    
     autoScanTimer = setInterval(() => { 
         if (autoScanEnabled) { 
             timeLeft--; 
+            const display = document.getElementById('timerDisplay');
+            if (display) {
+                display.style.display = 'block';
+                display.textContent = timeLeft + 's'; 
+            }
             if (timeLeft <= 0) { 
                 timeLeft = 30; 
-                if (!isScanning) startVerification(); 
+                startVerification(); 
             } 
-            if (display) display.textContent = timeLeft + 's'; 
         } 
     }, 1000); 
 }
@@ -223,3 +244,4 @@ function forceInit() {
 }
 
 forceInit();
+
