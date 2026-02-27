@@ -215,12 +215,6 @@ async function startVerification(forceService = null) {
                 const start = performance.now();
                 let responded = false;
                 const done = (success, status) => {
-                    if (responded) return; responded = true;
-                    clearTimeout(timeout);
-                    probe.onerror = probe.onload = null;
-                    if (probe.parentNode && document.head.contains(probe)) {
-                        document.head.removeChild(probe);
-                    }
                     s.verified = success; 
                     s.lastStatus = status;
                     s.responseTime = Math.round(performance.now() - start);
@@ -361,6 +355,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
