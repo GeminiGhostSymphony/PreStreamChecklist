@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stream Checklist & App Verifier</title>
     <link rel="stylesheet" href="https://geminighostsymphony.github.io/PreStreamChecklist/style.css">
 </head>
@@ -76,7 +77,7 @@
     </div>
   </div>
 
-  <script src="https://geminighostsymphony.github.io/PreStreamChecklist/engine.js"></script>
+  <script src="https://geminighostsymphony.github.io/PreStreamChecklist/engine.js" crossorigin="anonymous"></script>
   <script>
     if (window.location.protocol !== 'file:') {
         document.getElementById('setup-view').style.display = 'block';
@@ -86,10 +87,19 @@
 
     function downloadTool() {
         const clone = document.documentElement.cloneNode(true);
-        clone.querySelector('#setup-view').remove();
-        clone.querySelector('#tool-view').style.opacity = '1';
-        clone.querySelector('#tool-view').style.pointerEvents = 'auto';
-        clone.querySelector('script:last-of-type').remove();
+        
+        const setup = clone.querySelector('#setup-view');
+        if (setup) setup.remove();
+        
+        const tool = clone.querySelector('#tool-view');
+        if (tool) {
+            tool.style.opacity = '1';
+            tool.style.pointerEvents = 'auto';
+        }
+        
+        const scripts = clone.querySelectorAll('script');
+        if (scripts.length > 1) scripts[scripts.length - 1].remove();
+
         const blob = new Blob([clone.outerHTML], { type: 'text/html' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -100,5 +110,6 @@
 </body>
 
 </html>
+
 
 
