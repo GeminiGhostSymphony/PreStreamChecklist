@@ -228,10 +228,9 @@ async function startVerification(forceService = null) {
                 probe.onerror = () => done(true, 'Connected');
                 probe.onload = () => done(true, 'Connected');
 
-                const endpoint = s.key === 'songify' ? '/auth' : '';
-                probe.src = `http://127.0.0.1:${s.port}/${endpoint}?t=${Date.now()}`;
+                const targetPath = s.key === 'songify' ? '/auth' : '/';
+                probe.src = `http://127.0.0.1:${s.port}${targetPath}?t=${Date.now()}`;
 
-                probe.crossOrigin = "anonymous";
                 document.head.appendChild(probe);
             });
         }));
@@ -342,6 +341,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
