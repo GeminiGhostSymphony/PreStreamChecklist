@@ -226,16 +226,32 @@ async function startVerification(forceService = null) {
                     s.responseTime = Math.round(performance.now() - start);
                     resolve();
                 };
-                const timeoutLimit = (s.key === 'songify') ? 2500 : 1500;
-                const timeout = setTimeout(() => done(false, 'Offline'), timeoutLimit);
-                
-                probe.onerror = () => done(true, 'Connected');
-                probe.onload = () => done(true, 'Connected');
 
-                const targetPath = (s.key === 'songify') ? 'index.html' : 'ping';
-                probe.src = `http://127.0.0.1:${s.port}/${targetPath}?t=${Date.now()}`;
+                if (s.key === 'songify') {
+                    const ws = new WebSocket(`ws://127.0.0.1:${s.port}`);
+                    const wsTimeout = setTimeout(() => {
+                        ws.close();
+                        done(false, 'Offline');
+                    }, 2000);
 
-                document.head.appendChild(probe);
+                    ws.onopen = () => { clearTimeout(wsTimeout); ws.close(); done(true, 'Connected'); };
+                    ws.onerror = () => { clearTimeout(wsTimeout); done(false, 'Offline'); };
+                } else {
+                    const probe = document.createElement('script');
+                    const timeout = setTimeout(() => {
+                        if (probe.parentNode) document.head.removeChild(probe);
+                        done(false, 'Offline');
+                    }, 1500);
+
+                    probe.onerror = probe.onload = () => {
+                        clearTimeout(timeout);
+                        if (probe.parentNode) document.head.removeChild(probe);
+                        done(true, 'Connected');
+                    };
+
+                    probe.src = `http://127.0.0.1:${s.port}/ping?t=${Date.now()}`;
+                    document.head.appendChild(probe);
+                }
             });
         }));
     } catch (e) {
@@ -345,6 +361,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
