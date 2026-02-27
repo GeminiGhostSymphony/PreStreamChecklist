@@ -4,17 +4,6 @@
     <meta charset="UTF-8">
     <title>Stream Checklist & App Verifier</title>
     <link rel="stylesheet" href="https://geminighostsymphony.github.io/PreStreamChecklist/style.css">
-    <script>
-        const repoBase = "https://geminighostsymphony.github.io/PreStreamChecklist";
-        
-        function injectStyle() {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = `${repoBase}/style.css?v=${Date.now()}`;
-            document.head.appendChild(link);
-        }
-        injectStyle();
-    </script>
 </head>
 <body>
   <!-- Web Setup Section -->
@@ -87,38 +76,20 @@
     </div>
   </div>
 
+  <script src="https://geminighostsymphony.github.io/PreStreamChecklist/engine.js"></script>
   <script>
-    const engineUrl = "https://geminighostsymphony.github.io/PreStreamChecklist/engine.js";
-
-    function startEngine() {
-        const loader = document.createElement('script');
-        loader.src = `${engineUrl}?v=${Date.now()}`;
-        loader.onload = () => {
-            console.log("[SYSTEM] Engine Loaded.");
-            document.getElementById('loading-status').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-            if(window.renderChecklist) {
-                renderChecklist();
-                updateUI();
-            }
-        };
-        loader.onerror = () => {
-            document.getElementById('loading-status').innerHTML = "[ERROR] Engine Blocked. Check Internet or GitHub Pages HTTPS settings.";
-        };
-        document.body.appendChild(loader);
-    }
-
     if (window.location.protocol !== 'file:') {
         document.getElementById('setup-view').style.display = 'block';
-        document.getElementById('tool-view').style.display = 'none';
-    } else {
-        startEngine();
+        document.getElementById('tool-view').style.opacity = '0.3';
+        document.getElementById('tool-view').style.pointerEvents = 'none';
     }
 
     function downloadTool() {
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#setup-view').remove();
-        clone.querySelector('#tool-view').style.display = 'block';
+        clone.querySelector('#tool-view').style.opacity = '1';
+        clone.querySelector('#tool-view').style.pointerEvents = 'auto';
+        clone.querySelector('script:last-of-type').remove();
         const blob = new Blob([clone.outerHTML], { type: 'text/html' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -129,4 +100,5 @@
 </body>
 
 </html>
+
 
