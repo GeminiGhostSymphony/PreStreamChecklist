@@ -34,6 +34,7 @@ function renderChecklist() {
         const row = document.createElement('div'); row.className = `item-row ${item.done ? 'is-done' : ''}`;
         row.draggable = true;
         row.innerHTML = `<div class="drag-handle">⠿</div><input type="checkbox" class="cb" ${item.done ? 'checked' : ''} onchange="toggleItem(${i})"><input type="text" class="item-text" value="${item.text.replace(/"/g, '&quot;')}" oninput="items[${i}].text=this.value;save()"><span style="cursor:pointer;color:var(--error);opacity:0.6;padding:0 5px;font-weight:bold;" onclick="items.splice(${i},1);renderChecklist();save()">✕</span>`;
+        
         row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text', i); row.classList.add('dragging'); });
         row.addEventListener('dragend', () => { row.classList.remove('dragging'); document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over')); });
         row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drag-over'); });
@@ -42,7 +43,7 @@ function renderChecklist() {
             e.preventDefault();
             const from = parseInt(e.dataTransfer.getData('text'));
             const to = i;
-            const temp = items.splice(from, 1);
+            const temp = items.splice(from, 1)[0];
             items.splice(to, 0, temp);
             renderChecklist(); save();
         });
@@ -53,34 +54,47 @@ function renderChecklist() {
 function toggleItem(i) { items[i].done = !items[i].done; renderChecklist(); save(); }
 function bulkCheck(val) { items.forEach(i => i.done = val); renderChecklist(); save(); }
 function addItem() { items.push({text: "New Task", done: false}); renderChecklist(); save(); }
-function savePreset() { const name = document.getElementById('newPresetName').value.trim(); if (!name) return alert("Enter a name"); presets[name] = { svc: activeServices.map(s => ({...s, verified: false, lastStatus: 'Waiting'})), checklist: JSON.parse(JSON.stringify(items)) }; updatePresetDropdown(); save(); }
+
+function savePreset() { 
+    const nameInput = document.getElementById('newPresetName');
+    const name = nameInput.value.trim(); 
+    if (!name) return alert("Enter a name"); 
+    
+    // Clean status for saving
+    const cleanSvc = activeServices.map(s => ({...s, verified: false, lastStatus: 'Waiting', responseTime: 0}));
+    presets[name] = { svc: cleanSvc, checklist: JSON.parse(JSON.stringify(items)) }; 
+    nameInput.value = "";
+    updatePresetDropdown(); save(); 
+}
 
 function loadPreset(name) {
     if (!name || !presets[name]) return;
     isScanning = false;
-    
-    activeServices = JSON.parse(JSON.stringify(presets[name].svc || []));
-    items = JSON.parse(JSON.stringify(presets[name].checklist || []));
-    
-    activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; });
-
-    renderChecklist();
-    updateUI();
-
-    setTimeout(() => startVerification(), 100);
+    activeServices = JSON.parse(JSON.stringify(presets[name].svc || [])).map(s => ({...s, verified: false, lastStatus: 'Waiting', responseTime: 0}));
+    if (presets[name].checklist) items = JSON.parse(JSON.stringify(presets[name].checklist));
+    renderChecklist(); updateUI(); 
+    setTimeout(() => startVerification(), 200); 
     save();
 }
 
 function updatePresetDropdown() {
     const sel = document.getElementById('presetSelector'); if(!sel) return;
     sel.innerHTML = '<option value="">-- Select Preset --</option>';
-    Object.keys(presets).sort().forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name + (name === defaultPreset ? " (Default)" : ""); sel.appendChild(opt); });
+    Object.keys(presets).sort().forEach(name => { 
+        const opt = document.createElement('option'); 
+        opt.value = name; 
+        opt.textContent = name + (name === defaultPreset ? " (Default)" : ""); 
+        sel.appendChild(opt); 
+    });
 }
 
 function addService() {
     const p = document.getElementById('servicePicker'); if (!p || !p.value) return;
     const port = document.getElementById('customPort').value || p.options[p.selectedIndex].dataset.port;
-    if (!activeServices.find(s => s.key === p.value)) { activeServices.push({ key: p.value, port: parseInt(port), name: p.options[p.selectedIndex].text, verified: false, lastStatus: 'Waiting', responseTime: 0 }); updateUI(); startVerification(); }
+    if (!activeServices.find(s => s.key === p.value)) { 
+        activeServices.push({ key: p.value, port: parseInt(port), name: p.options[p.selectedIndex].text, verified: false, lastStatus: 'Waiting', responseTime: 0 }); 
+        updateUI(); startVerification(); 
+    }
 }
 
 function updatePort(index, newPort) { activeServices[index].port = parseInt(newPort) || 0; activeServices[index].verified = false; activeServices[index].lastStatus = 'Waiting'; save(); updateUI(); startVerification(); }
@@ -93,6 +107,7 @@ function copyLog(key) {
 function updateUI() {
     const sCont = document.getElementById('status-container'), iList = document.getElementById('instruction-list'), iPanel = document.getElementById('instruction-panel');
     if (!sCont) return; sCont.innerHTML = ""; iList.innerHTML = ""; let hasUnverified = false;
+    
     activeServices.forEach((s, i) => {
         if (!s.verified) hasUnverified = true;
         const div = document.createElement('div'); div.className = 'status-box';
@@ -101,6 +116,7 @@ function updateUI() {
         sCont.appendChild(div);
         if (setupHelp[s.key]) iList.innerHTML += `<div style="margin-bottom:6px;">${setupHelp[s.key]}</div>`;
     });
+    
     document.getElementById('recheck-btn').classList.toggle('needs-attention', hasUnverified && !autoScanEnabled);
     document.getElementById('warning-icon').style.display = (hasUnverified && !autoScanEnabled) ? 'inline' : 'none';
     iPanel.style.display = (iList.innerHTML && instrVisible) ? 'block' : 'none';
@@ -115,82 +131,95 @@ async function startVerification() {
     if (checkQueue.length === 0) return;
 
     isScanning = true;
-    updateUI();
-    
     await Promise.all(checkQueue.map(async (s) => {
         const start = performance.now();
         try {
-            await fetch(`http://127.0.0.1:${s.port}`, { 
-                mode: 'no-cors', 
-                cache: 'no-cache',
-                referrerPolicy: 'no-referrer' 
-            });
+            await fetch(`http://127.0.0.1:${s.port}`, { mode: 'no-cors', cache: 'no-cache' });
             s.verified = true;
             s.lastStatus = 'Connected';
         } catch (e) {
             s.verified = false;
-            s.lastStatus = 'Refused/Offline';
+            s.lastStatus = 'Offline/Refused';
         }
         s.responseTime = Math.round(performance.now() - start);
     }));
-    
-    isScanning = false;
+    isScanning = false; 
     updateUI(); 
 }
 
-function manualResetScan() { activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; }); updateUI(); startVerification(); }
+function manualResetScan() { 
+    activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; }); 
+    if (autoScanEnabled) { timeLeft = 30; document.getElementById('timerDisplay').textContent = '30s'; }
+    updateUI(); 
+    startVerification(); 
+}
+
 function clearAll() { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } }
 function toggleInstructions() { instrVisible = !instrVisible; updateUI(); }
 function toggleDebug(val) { debugEnabled = val; save(); updateUI(); }
 function setAsDefault() { const name = document.getElementById('presetSelector').value; if (!name) return alert("Select a preset first"); defaultPreset = name; updatePresetDropdown(); save(); }
 function deletePreset() { const name = document.getElementById('presetSelector').value; if (!name || !confirm(`Delete preset "${name}"?`)) return; if (defaultPreset === name) defaultPreset = ""; delete presets[name]; updatePresetDropdown(); save(); }
-function toggleAutoScan(val) { autoScanEnabled = val; save(); updateUI(); if (val) startAutoScanLoop(); }
-function startAutoScanLoop() { if (autoScanTimer) clearInterval(autoScanTimer); timeLeft = 30; autoScanTimer = setInterval(() => { if (autoScanEnabled) { timeLeft--; if (timeLeft <= 0) { timeLeft = 30; startVerification(); } document.getElementById('timerDisplay').textContent = timeLeft + 's'; } }, 1000); }
+
+function toggleAutoScan(val) { 
+    autoScanEnabled = val; 
+    save(); 
+    updateUI(); 
+    if (val) startAutoScanLoop(); 
+    else { if (autoScanTimer) clearInterval(autoScanTimer); autoScanTimer = null; }
+}
+
+function startAutoScanLoop() { 
+    if (autoScanTimer) clearInterval(autoScanTimer); 
+    timeLeft = 30; 
+    const display = document.getElementById('timerDisplay');
+    if(display) display.textContent = '30s';
+    
+    autoScanTimer = setInterval(() => { 
+        if (autoScanEnabled) { 
+            timeLeft--; 
+            if (timeLeft <= 0) { 
+                timeLeft = 30; 
+                if (!isScanning) startVerification(); 
+            } 
+            if (display) display.textContent = timeLeft + 's'; 
+        } 
+    }, 1000); 
+}
 
 function forceInit() {
     const picker = document.getElementById('servicePicker');
     const pSelector = document.getElementById('presetSelector');
-    
     if (!picker || !pSelector) return setTimeout(forceInit, 50);
 
     document.getElementById('autoScanToggle').checked = autoScanEnabled;
     document.getElementById('debugToggle').checked = debugEnabled;
-
+    
     updatePresetDropdown();
-    pSelector.onchange = (e) => {
-        if (e.target.value) loadPreset(e.target.value);
-    };
+    pSelector.onchange = (e) => loadPreset(e.target.value);
 
     picker.innerHTML = '<option value="">-- Select App --</option>';
-    serviceDefs.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.key;
-        opt.textContent = s.name;
-        opt.dataset.port = s.port;
-        picker.appendChild(opt);
+    serviceDefs.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => { 
+        const opt = document.createElement('option'); 
+        opt.value = s.key; 
+        opt.textContent = s.name; 
+        opt.dataset.port = s.port; 
+        picker.appendChild(opt); 
     });
 
-    picker.onchange = (e) => {
-        const sel = e.target.options[e.target.selectedIndex];
-        const portInput = document.getElementById('customPort');
-        if (portInput) portInput.value = sel.value ? (sel.dataset.port || "") : "";
+    picker.onchange = (e) => { 
+        const sel = e.target.options[e.target.selectedIndex]; 
+        document.getElementById('customPort').value = sel.value ? (sel.dataset.port || "") : ""; 
     };
 
-    if (defaultPreset && presets[defaultPreset]) {
-        const data = presets[defaultPreset];
-        activeServices = JSON.parse(JSON.stringify(data.svc || []));
-        items = JSON.parse(JSON.stringify(data.checklist || []));
-        pSelector.value = defaultPreset;
+    if (defaultPreset && presets[defaultPreset]) { 
+        activeServices = JSON.parse(JSON.stringify(presets[defaultPreset].svc || []));
+        items = JSON.parse(JSON.stringify(presets[defaultPreset].checklist || []));
+        pSelector.value = defaultPreset; 
     }
-
-    renderChecklist();
+    
+    if (autoScanEnabled) startAutoScanLoop();
+    renderChecklist(); 
     updateUI();
-
-    if (autoScanEnabled) {
-        startAutoScanLoop();
-    } else {
-        setTimeout(() => startVerification(), 500);
-    }
 }
 
 forceInit();
