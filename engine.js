@@ -58,9 +58,17 @@ function savePreset() { const name = document.getElementById('newPresetName').va
 function loadPreset(name) {
     if (!name || !presets[name]) return;
     isScanning = false;
-    activeServices = JSON.parse(JSON.stringify(presets[name].svc || [])).map(s => ({...s, verified: false, lastStatus: 'Waiting', responseTime: 0}));
-    if (presets[name].checklist) items = JSON.parse(JSON.stringify(presets[name].checklist));
-    renderChecklist(); updateUI(); setTimeout(() => startVerification(), 200); save();
+    
+    activeServices = JSON.parse(JSON.stringify(presets[name].svc || []));
+    items = JSON.parse(JSON.stringify(presets[name].checklist || []));
+    
+    activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; });
+
+    renderChecklist();
+    updateUI();
+
+    setTimeout(() => startVerification(), 100);
+    save();
 }
 
 function updatePresetDropdown() {
@@ -102,24 +110,26 @@ function updateUI() {
 }
 
 async function startVerification() {
+    if (isScanning) return;
     const checkQueue = activeServices.filter(s => !s.verified);
-    if (checkQueue.length === 0 || isScanning) return;
-    isScanning = true; const scanID = Date.now();
+    if (checkQueue.length === 0) return;
+
+    isScanning = true;
     await Promise.all(checkQueue.map(async (s) => {
         const start = performance.now();
-        const ifr = document.createElement('iframe'); ifr.style.display = "none"; document.body.appendChild(ifr);
-        const promise = new Promise(r => {
-            const t = setTimeout(() => r({success: false, status: 'Timeout'}), 1500);
-            ifr.onload = () => { clearTimeout(t); r({success: true, status: 'Handshake Success'}); };
-            ifr.onerror = () => { clearTimeout(t); r({success: true, status: 'Handshake Error'}); };
-        });
-        ifr.src = `http://127.0.0.1:${s.port}/?scan=${scanID}&t=${Date.now()}`;
-        const result = await promise;
+        try {
+            await fetch(`http://127.0.0.1:${s.port}`, { mode: 'no-cors', cache: 'no-cache' });
+            s.verified = true;
+            s.lastStatus = 'Connected';
+        } catch (e) {
+            s.verified = false;
+            s.lastStatus = 'Refused/Offline';
+        }
         s.responseTime = Math.round(performance.now() - start);
-        s.verified = result.success; s.lastStatus = result.status;
-        if (document.body.contains(ifr)) document.body.removeChild(ifr);
     }));
-    isScanning = false; updateUI(); 
+    
+    isScanning = false;
+    updateUI(); 
 }
 
 function manualResetScan() { activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; }); updateUI(); startVerification(); }
@@ -140,8 +150,10 @@ function forceInit() {
     picker.innerHTML = '<option value="">-- Select App --</option>';
     serviceDefs.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => { const opt = document.createElement('option'); opt.value = s.key; opt.textContent = s.name; opt.dataset.port = s.port; picker.appendChild(opt); });
     picker.onchange = (e) => { const sel = e.target.options[e.target.selectedIndex]; document.getElementById('customPort').value = sel.value ? (sel.dataset.port || "") : ""; };
+    document.getElementById('presetSelector').onchange = (e) => loadPreset(e.target.value);
     if (defaultPreset && presets[defaultPreset]) { loadPreset(defaultPreset); document.getElementById('presetSelector').value = defaultPreset; }
     if (autoScanEnabled) startAutoScanLoop();
     renderChecklist(); updateUI();
 }
 forceInit();
+
