@@ -111,8 +111,8 @@ function updateUI() {
     activeServices.forEach((s, i) => {
         if (!s.verified) hasUnverified = true;
         const div = document.createElement('div'); div.className = 'status-box';
-        const statusText = s.verified ? 'OK' : s.lastStatus;
-        const color = s.verified ? 'var(--success)' : (s.lastStatus.includes('Pinging') ? 'var(--warning)' : 'var(--error)');
+        const statusText = s.verified ? 'OK' : (s.lastStatus || 'Waiting');
+        const color = s.verified ? 'var(--success)' : (statusText.includes('Checking') ? 'var(--warning)' : 'var(--error)');
         div.innerHTML = `<div class="status-top"><span style="color:${color}">● ${s.name}: ${statusText}</span><span style="cursor:pointer;opacity:0.5;" onclick="activeServices.splice(${i},1);updateUI();">✕</span></div><div class="status-controls"><span>Port: <input type="number" class="port-edit" value="${s.port}" onchange="updatePort(${i}, this.value)"></span></div>${debugEnabled ? `<div class="debug-area"><div style="font-size:10px; opacity:0.8;">Status: ${s.lastStatus} (${s.responseTime || 0}ms)</div>${!s.verified ? `<button class="main-btn btn-accent" style="padding:2px 5px; font-size:9px; margin-top:5px; width:fit-content;" onclick="copyLog('${s.key}')">Copy Log</button>` : ''}</div>` : ''}`;
         sCont.appendChild(div);
         if (setupHelp[s.key]) iList.innerHTML += `<div style="margin-bottom:6px;">${setupHelp[s.key]}</div>`;
@@ -133,62 +133,62 @@ async function startVerification() {
 
     isScanning = true;
     
-    const bridge = window.localVerifyBridge;
-    if (!bridge) {
-        console.error("Local verification bridge not found!");
-        isScanning = false;
-        return;
-    }
+    checkQueue.forEach(s => s.lastStatus = `Checking ${s.port}...`);
+    updateUI(); 
 
     try {
-        await Promise.all(checkQueue.map(async (s) => {
-            s.lastStatus = `Pinging ${s.port}...`;
-            updateUI(); 
-            
-            const result = await bridge(s);
-            
-            s.verified = result.success;
-            s.lastStatus = result.status;
-            s.responseTime = result.time;
+        await Promise.all(checkQueue.map((s) => {
+            return new Promise((resolve) => {
+                const probe = document.createElement('script');
+                const start = performance.now();
+                let responded = false;
+
+                const cleanup = (success, status) => {
+                    if (responded) return;
+                    responded = true;
+                    clearTimeout(timeout);
+                    probe.onerror = probe.onload = null;
+                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                    s.verified = success;
+                    s.lastStatus = status;
+                    s.responseTime = Math.round(performance.now() - start);
+                    resolve();
+                };
+
+                const timeout = setTimeout(() => cleanup(false, 'Offline'), 1500);
+
+                probe.onerror = () => cleanup(true, 'Connected');
+                probe.onload = () => cleanup(true, 'Connected');
+
+                probe.src = `http://127.0.0.1:${s.port}/ping?t=${Date.now()}`;
+                document.head.appendChild(probe);
+            });
         }));
     } catch (e) {
-        console.error("Scan error:", e);
+        console.error("Scan Error:", e);
     } finally {
         isScanning = false;
-        updateUI();
+        updateUI(); 
     }
 }
 
 function manualResetScan() { 
+    if (autoScanTimer) clearInterval(autoScanTimer);
     isScanning = false; 
     activeServices.forEach(s => { 
         s.verified = false; 
         s.lastStatus = 'Waiting'; 
     }); 
     
-    if (autoScanEnabled) {
-        timeLeft = 30;
-        const display = document.getElementById('timerDisplay');
-        if (display) display.textContent = '30s';
-    }
-
-    updateUI(); 
-    setTimeout(() => startVerification(), 100);
-}
-
-function manualResetScan() { 
-    isScanning = false;
-    activeServices.forEach(s => { 
-        s.verified = false; 
-        s.lastStatus = 'Waiting'; 
-    }); 
-    
-    timeLeft = 30; 
+    timeLeft = 30;
     const display = document.getElementById('timerDisplay');
     if (display) display.textContent = '30s';
 
     updateUI(); 
-    setTimeout(() => startVerification(), 50);
+
+    if (autoScanEnabled) startAutoScanLoop();
+    
+    setTimeout(() => startVerification(), 100);
 }
 
 function clearAll() { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } }
@@ -208,8 +208,6 @@ function toggleAutoScan(val) {
 function startAutoScanLoop() {
     if (autoScanTimer) clearInterval(autoScanTimer);
     timeLeft = 30;
-    const display = document.getElementById('timerDisplay');
-    if (display) display.style.display = 'block';
     
     autoScanTimer = setInterval(() => {
         if (!autoScanEnabled) {
@@ -218,11 +216,14 @@ function startAutoScanLoop() {
         }
 
         timeLeft--;
-        if (display) display.textContent = timeLeft + 's';
+        if (display) { 
+            display.style.display = 'block';
+            display.textContent = timeLeft + 's';
+        }
 
         if (timeLeft <= 0) {
             timeLeft = 30;
-            if (isScanning) isScanning = false; 
+            isScanning = false; 
             startVerification();
         }
     }, 1000);
@@ -265,6 +266,7 @@ function forceInit() {
 }
 
 forceInit();
+
 
 
 
