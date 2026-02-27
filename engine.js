@@ -95,7 +95,15 @@ function addService() {
     }
 }
 
-function updatePort(index, newPort) { activeServices[index].port = parseInt(newPort) || 0; activeServices[index].verified = false; activeServices[index].lastStatus = 'Waiting'; save(); updateUI(); startVerification(); }
+function updatePort(index, newPort) { 
+    const service = activeServices[index];
+    service.port = parseInt(newPort) || 0; 
+    service.verified = false; 
+    service.lastStatus = 'Waiting'; 
+    save(); 
+    updateUI(); 
+    startVerification(service); 
+}
 
 function updateUI() {
     const sCont = document.getElementById('status-container'), iList = document.getElementById('instruction-list'), iPanel = document.getElementById('instruction-panel');
@@ -124,11 +132,22 @@ function updateUI() {
 
 async function startVerification() {
     if (isScanning) return;
-    const checkQueue = activeServices.filter(s => !s.verified);
+    
+    let checkQueue = [];
+    if (forceService) {
+        checkQueue = [forceService];
+    } else {
+        checkQueue = activeServices.filter(s => !s.verified);
+    }
+
     if (checkQueue.length === 0) return;
+    
     isScanning = true;
     
-    checkQueue.forEach(s => s.lastStatus = `Checking ${s.port}...`);
+    checkQueue.forEach(s => {
+        s.verified = false; 
+        s.lastStatus = `Checking ${s.port}...`;
+    });
     updateUI(); 
 
     try {
@@ -161,8 +180,13 @@ async function startVerification() {
 
 function manualResetScan() { 
     isScanning = false;
-    activeServices.forEach(s => { s.verified = false; s.lastStatus = 'Waiting'; }); 
-    if (autoScanEnabled) { timeLeft = 30; const td = document.getElementById('timerDisplay'); if(td) td.textContent = '30s'; }
+    
+    if (autoScanEnabled) { 
+        timeLeft = 30; 
+        const td = document.getElementById('timerDisplay'); 
+        if(td) td.textContent = '30s'; 
+    }
+    
     updateUI(); 
     setTimeout(() => startVerification(), 50);
 }
@@ -170,12 +194,27 @@ function manualResetScan() {
 function startAutoScanLoop() {
     if (autoScanTimer) clearInterval(autoScanTimer);
     timeLeft = 30;
+    
     autoScanTimer = setInterval(() => {
         const display = document.getElementById('timerDisplay');
-        if (!autoScanEnabled) { if(display) display.style.display = 'none'; clearInterval(autoScanTimer); return; }
+
+        if (!autoScanEnabled) { 
+            if(display) display.style.display = 'none'; 
+            clearInterval(autoScanTimer); 
+            return; 
+        }
+
         timeLeft--;
-        if (display) { display.style.display = 'block'; display.textContent = timeLeft + 's'; }
-        if (timeLeft <= 0) { timeLeft = 30; isScanning = false; startVerification(); }
+        if (display) { 
+            display.style.display = 'block'; 
+            display.textContent = timeLeft + 's'; 
+        }
+
+        if (timeLeft <= 0) { 
+            timeLeft = 30; 
+            isScanning = false; 
+            startVerification(); 
+        }
     }, 1000);
 }
 
@@ -217,3 +256,4 @@ window.toggleDebug = (v) => { debugEnabled = v; save(); updateUI(); };
 window.addItem = addItem; window.bulkCheck = bulkCheck; window.toggleItem = toggleItem;
 window.setAsDefault = setAsDefault; window.deletePreset = deletePreset; window.clearAll = () => { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } };
 window.toggleInstructions = () => { instrVisible = !instrVisible; updateUI(); };
+
