@@ -111,8 +111,9 @@ function updateUI() {
     activeServices.forEach((s, i) => {
         if (!s.verified) hasUnverified = true;
         const div = document.createElement('div'); div.className = 'status-box';
-        const color = s.verified ? 'var(--success)' : 'var(--error)';
-        div.innerHTML = `<div class="status-top"><span style="color:${color}">● ${s.name}: ${s.verified ? 'OK' : 'Waiting...'}</span><span style="cursor:pointer;opacity:0.5;" onclick="activeServices.splice(${i},1);updateUI();">✕</span></div><div class="status-controls"><span>Port: <input type="number" class="port-edit" value="${s.port}" onchange="updatePort(${i}, this.value)"></span></div>${debugEnabled ? `<div class="debug-area"><div style="font-size:10px; opacity:0.8;">Status: ${s.lastStatus} (${s.responseTime || 0}ms)</div>${!s.verified ? `<button class="main-btn btn-accent" style="padding:2px 5px; font-size:9px; margin-top:5px; width:fit-content;" onclick="copyLog('${s.key}')">Copy Log</button>` : ''}</div>` : ''}`;
+        const statusText = s.verified ? 'OK' : s.lastStatus;
+        const color = s.verified ? 'var(--success)' : (s.lastStatus.includes('Pinging') ? 'var(--warning)' : 'var(--error)');
+        div.innerHTML = `<div class="status-top"><span style="color:${color}">● ${s.name}: ${statusText}</span><span style="cursor:pointer;opacity:0.5;" onclick="activeServices.splice(${i},1);updateUI();">✕</span></div><div class="status-controls"><span>Port: <input type="number" class="port-edit" value="${s.port}" onchange="updatePort(${i}, this.value)"></span></div>${debugEnabled ? `<div class="debug-area"><div style="font-size:10px; opacity:0.8;">Status: ${s.lastStatus} (${s.responseTime || 0}ms)</div>${!s.verified ? `<button class="main-btn btn-accent" style="padding:2px 5px; font-size:9px; margin-top:5px; width:fit-content;" onclick="copyLog('${s.key}')">Copy Log</button>` : ''}</div>` : ''}`;
         sCont.appendChild(div);
         if (setupHelp[s.key]) iList.innerHTML += `<div style="margin-bottom:6px;">${setupHelp[s.key]}</div>`;
     });
@@ -131,41 +132,46 @@ async function startVerification() {
     if (checkQueue.length === 0) return;
 
     isScanning = true;
+    
+    checkQueue.forEach(s => {
+        s.lastStatus = `Pinging Port ${s.port}...`;
+    });
     updateUI(); 
 
     try {
-        // Run all pings in parallel
         await Promise.all(checkQueue.map((s) => {
             return new Promise((resolve) => {
-                const img = new Image();
+                const probe = document.createElement('script');
                 const start = performance.now();
-                let finished = false;
+                let hasResponded = false;
 
-                const done = (success, status) => {
-                    if (finished) return;
-                    finished = true;
-                    clearTimeout(timer);
-                    img.onload = img.onerror = null;
-                    img.src = ""; 
+                const cleanup = (success, status) => {
+                    if (hasResponded) return;
+                    hasResponded = true;
+                    clearTimeout(timeout);
+                    probe.onerror = probe.onload = null;
+                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                    
                     s.verified = success;
                     s.lastStatus = status;
                     s.responseTime = Math.round(performance.now() - start);
                     resolve();
                 };
 
-                const timer = setTimeout(() => done(false, 'Timeout/Offline'), 1500);
+                const timeout = setTimeout(() => cleanup(false, 'Offline/Timeout'), 1500);
 
-                img.onload = () => done(true, 'Handshake OK');
-                img.onerror = () => done(true, 'Connected');
+                probe.onerror = () => cleanup(true, 'Connected');
+                probe.onload = () => cleanup(true, 'Connected');
 
-                img.src = `http://127.0.0.1:${s.port}/favicon.ico?nocache=${Date.now()}`;
+                probe.src = `http://127.0.0.1:${s.port}/ping?t=${Date.now()}`;
+                document.head.appendChild(probe);
             });
         }));
     } catch (e) {
-        console.error("Scan Crashed:", e);
+        console.error("Verification Error:", e);
     } finally {
         isScanning = false;
-        updateUI();
+        updateUI(); 
     }
 }
 
@@ -175,11 +181,11 @@ function manualResetScan() {
         s.verified = false; 
         s.lastStatus = 'Waiting'; 
     }); 
-    if (autoScanEnabled) { 
-        timeLeft = 30; 
-        const display = document.getElementById('timerDisplay');
-        if (display) display.textContent = '30s';
-    }
+    
+    timeLeft = 30; 
+    const display = document.getElementById('timerDisplay');
+    if (display) display.textContent = '30s';
+
     updateUI(); 
     setTimeout(() => startVerification(), 50);
 }
@@ -201,13 +207,9 @@ function toggleAutoScan(val) {
 function startAutoScanLoop() {
     if (autoScanTimer) clearInterval(autoScanTimer);
     timeLeft = 30;
-    
     const display = document.getElementById('timerDisplay');
-    if (display) {
-        display.style.display = 'block';
-        display.textContent = '30s';
-    }
-
+    if (display) display.style.display = 'block';
+    
     autoScanTimer = setInterval(() => {
         if (!autoScanEnabled) {
             clearInterval(autoScanTimer);
@@ -215,14 +217,12 @@ function startAutoScanLoop() {
         }
 
         timeLeft--;
-        if (display) {
-            display.style.display = 'block'; 
-            display.textContent = timeLeft + 's';
-        }
+        if (display) display.textContent = timeLeft + 's';
 
         if (timeLeft <= 0) {
             timeLeft = 30;
-            if (!isScanning) startVerification();
+            if (isScanning) isScanning = false; 
+            startVerification();
         }
     }, 1000);
 }
@@ -264,5 +264,6 @@ function forceInit() {
 }
 
 forceInit();
+
 
 
