@@ -115,10 +115,16 @@ async function startVerification() {
     if (checkQueue.length === 0) return;
 
     isScanning = true;
+    updateUI();
+    
     await Promise.all(checkQueue.map(async (s) => {
         const start = performance.now();
         try {
-            await fetch(`http://127.0.0.1:${s.port}`, { mode: 'no-cors', cache: 'no-cache' });
+            await fetch(`http://127.0.0.1:${s.port}`, { 
+                mode: 'no-cors', 
+                cache: 'no-cache',
+                referrerPolicy: 'no-referrer' 
+            });
             s.verified = true;
             s.lastStatus = 'Connected';
         } catch (e) {
@@ -143,17 +149,48 @@ function startAutoScanLoop() { if (autoScanTimer) clearInterval(autoScanTimer); 
 
 function forceInit() {
     const picker = document.getElementById('servicePicker');
-    if (!picker) return setTimeout(forceInit, 50); // Wait if HTML not ready
+    const pSelector = document.getElementById('presetSelector');
+    
+    if (!picker || !pSelector) return setTimeout(forceInit, 50);
+
     document.getElementById('autoScanToggle').checked = autoScanEnabled;
     document.getElementById('debugToggle').checked = debugEnabled;
-    updatePresetDropdown();
-    picker.innerHTML = '<option value="">-- Select App --</option>';
-    serviceDefs.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => { const opt = document.createElement('option'); opt.value = s.key; opt.textContent = s.name; opt.dataset.port = s.port; picker.appendChild(opt); });
-    picker.onchange = (e) => { const sel = e.target.options[e.target.selectedIndex]; document.getElementById('customPort').value = sel.value ? (sel.dataset.port || "") : ""; };
-    document.getElementById('presetSelector').onchange = (e) => loadPreset(e.target.value);
-    if (defaultPreset && presets[defaultPreset]) { loadPreset(defaultPreset); document.getElementById('presetSelector').value = defaultPreset; }
-    if (autoScanEnabled) startAutoScanLoop();
-    renderChecklist(); updateUI();
-}
-forceInit();
 
+    updatePresetDropdown();
+    pSelector.onchange = (e) => {
+        if (e.target.value) loadPreset(e.target.value);
+    };
+
+    picker.innerHTML = '<option value="">-- Select App --</option>';
+    serviceDefs.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.key;
+        opt.textContent = s.name;
+        opt.dataset.port = s.port;
+        picker.appendChild(opt);
+    });
+
+    picker.onchange = (e) => {
+        const sel = e.target.options[e.target.selectedIndex];
+        const portInput = document.getElementById('customPort');
+        if (portInput) portInput.value = sel.value ? (sel.dataset.port || "") : "";
+    };
+
+    if (defaultPreset && presets[defaultPreset]) {
+        const data = presets[defaultPreset];
+        activeServices = JSON.parse(JSON.stringify(data.svc || []));
+        items = JSON.parse(JSON.stringify(data.checklist || []));
+        pSelector.value = defaultPreset;
+    }
+
+    renderChecklist();
+    updateUI();
+
+    if (autoScanEnabled) {
+        startAutoScanLoop();
+    } else {
+        setTimeout(() => startVerification(), 500);
+    }
+}
+
+forceInit();
