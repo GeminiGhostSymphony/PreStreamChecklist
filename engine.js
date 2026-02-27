@@ -131,32 +131,42 @@ async function startVerification() {
     if (checkQueue.length === 0) return;
 
     isScanning = true;
-    updateUI();
-    
-    return new Promise((resolve) => {
-            const img = new Image();
-            const start = performance.now();
-            
-            img.onerror = () => {
-                s.verified = true;
-                s.lastStatus = 'Connected';
-                s.responseTime = Math.round(performance.now() - start);
-                resolve();
-            };
-            
-            const timeout = setTimeout(() => {
-                img.src = "";
-                s.verified = false;
-                s.lastStatus = 'Offline/Refused';
-                s.responseTime = Math.round(performance.now() - start);
-                resolve();
-            }, 1500);
-
-            img.src = `http://127.0.0.1:${s.port}/favicon.ico?t=${Date.now()}`;
-        });
-    }));
-    isScanning = false; 
     updateUI(); 
+
+    try {
+        // Run all pings in parallel
+        await Promise.all(checkQueue.map((s) => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const start = performance.now();
+                let finished = false;
+
+                const done = (success, status) => {
+                    if (finished) return;
+                    finished = true;
+                    clearTimeout(timer);
+                    img.onload = img.onerror = null;
+                    img.src = ""; 
+                    s.verified = success;
+                    s.lastStatus = status;
+                    s.responseTime = Math.round(performance.now() - start);
+                    resolve();
+                };
+
+                const timer = setTimeout(() => done(false, 'Timeout/Offline'), 1500);
+
+                img.onload = () => done(true, 'Handshake OK');
+                img.onerror = () => done(true, 'Connected');
+
+                img.src = `http://127.0.0.1:${s.port}/favicon.ico?nocache=${Date.now()}`;
+            });
+        }));
+    } catch (e) {
+        console.error("Scan Crashed:", e);
+    } finally {
+        isScanning = false;
+        updateUI();
+    }
 }
 
 function manualResetScan() { 
@@ -171,7 +181,7 @@ function manualResetScan() {
         if (display) display.textContent = '30s';
     }
     updateUI(); 
-    startVerification(); 
+    setTimeout(() => startVerification(), 50);
 }
 
 function clearAll() { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } }
@@ -188,23 +198,33 @@ function toggleAutoScan(val) {
     else { if (autoScanTimer) clearInterval(autoScanTimer); autoScanTimer = null; }
 }
 
-function startAutoScanLoop() { 
-    if (autoScanTimer) clearInterval(autoScanTimer); 
-    timeLeft = 30; 
-    autoScanTimer = setInterval(() => { 
-        if (autoScanEnabled) { 
-            timeLeft--; 
-            const display = document.getElementById('timerDisplay');
-            if (display) {
-                display.style.display = 'block';
-                display.textContent = timeLeft + 's'; 
-            }
-            if (timeLeft <= 0) { 
-                timeLeft = 30; 
-                startVerification(); 
-            } 
-        } 
-    }, 1000); 
+function startAutoScanLoop() {
+    if (autoScanTimer) clearInterval(autoScanTimer);
+    timeLeft = 30;
+    
+    const display = document.getElementById('timerDisplay');
+    if (display) {
+        display.style.display = 'block';
+        display.textContent = '30s';
+    }
+
+    autoScanTimer = setInterval(() => {
+        if (!autoScanEnabled) {
+            clearInterval(autoScanTimer);
+            return;
+        }
+
+        timeLeft--;
+        if (display) {
+            display.style.display = 'block'; 
+            display.textContent = timeLeft + 's';
+        }
+
+        if (timeLeft <= 0) {
+            timeLeft = 30;
+            if (!isScanning) startVerification();
+        }
+    }, 1000);
 }
 
 function forceInit() {
@@ -244,4 +264,5 @@ function forceInit() {
 }
 
 forceInit();
+
 
