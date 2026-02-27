@@ -95,23 +95,24 @@ function updatePresetDropdown() {
 }
 
 function addService() {
-    const p = document.getElementById('servicePicker'); if (!p || !p.value) return;
+    const p = document.getElementById('servicePicker'); 
+    if (!p || !p.value) return;
     const portInput = document.getElementById('customPort');
     const port = (portInput && portInput.value) ? portInput.value : p.options[p.selectedIndex].dataset.port;
+    
     if (!activeServices.find(s => s.key === p.value)) { 
-        activeServices.push({ 
+        const newSvc = { 
             key: p.value, 
             port: parseInt(port), 
             name: p.options[p.selectedIndex].text, 
             verified: false, 
             lastStatus: 'Waiting', 
             responseTime: 0 
-        }); 
-        
-        activeServices.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-        
+        };
+        activeServices.push(newSvc);
+        activeServices.sort((a, b) => a.name.localeCompare(b.name));
         updateUI(); 
-        startVerification(); 
+        startVerification(newSvc);
     }
 }
 
@@ -143,8 +144,15 @@ function deletePreset() {
 }
 
 function updateUI() {
-    const sCont = document.getElementById('status-container'), iList = document.getElementById('instruction-list'), iPanel = document.getElementById('instruction-panel');
-    if (!sCont) return; sCont.innerHTML = ""; if(iList) iList.innerHTML = ""; let hasUnverified = false;
+    const sCont = document.getElementById('status-container'), 
+          iList = document.getElementById('instruction-list'), 
+          iPanel = document.getElementById('instruction-panel');
+    const picker = document.getElementById('servicePicker');
+
+    if (!sCont) return; 
+    sCont.innerHTML = ""; 
+    if(iList) iList.innerHTML = ""; 
+    let hasUnverified = false;
     
     activeServices.forEach((s, i) => {
         if (!s.verified) hasUnverified = true;
@@ -155,12 +163,27 @@ function updateUI() {
 
         div.innerHTML = `<div class="status-top"><span style="color:${color}">● ${s.name}: ${statusText}</span><span style="cursor:pointer;opacity:0.5;" onclick="activeServices.splice(${i},1);updateUI();">✕</span></div><div class="status-controls"><span>Port: <input type="number" class="port-edit" value="${s.port}" onchange="updatePort(${i}, this.value)"></span></div>${debugEnabled ? `<div class="debug-area"><div style="font-size:10px; opacity:0.8;">Status: ${s.lastStatus} (${s.responseTime || 0}ms)</div></div>` : ''}`;
         sCont.appendChild(div);
-        if (iList && setupHelp[s.key]) iList.innerHTML += `<div style="margin-bottom:6px;">${setupHelp[s.key]}</div>`;
+        
+        if (iList && setupHelp[s.key]) {
+            iList.innerHTML += `<div class="instr-item">${setupHelp[s.key]}</div>`;
+        }
     });
+
+    if (picker && picker.value && setupHelp[picker.value]) {
+        const isAlreadyAdded = activeServices.some(s => s.key === picker.value);
+        if (!isAlreadyAdded && iList) {
+            iList.innerHTML += `<div class="instr-item" style="border-left: 3px solid var(--accent); padding-left: 8px; opacity: 0.8;"><i>Preview:</i> ${setupHelp[picker.value]}</div>`;
+        }
+    }
+
+    if(iPanel && iList) {
+        iPanel.style.display = (iList.innerHTML && instrVisible) ? 'block' : 'none';
+        const it = document.getElementById('instr-toggle'); 
+        if(it) it.textContent = instrVisible ? '[Hide]' : '[Show]';
+    }
     
     const rb = document.getElementById('recheck-btn'); if(rb) rb.classList.toggle('needs-attention', hasUnverified && !autoScanEnabled);
     const wi = document.getElementById('warning-icon'); if(wi) wi.style.display = (hasUnverified && !autoScanEnabled) ? 'inline' : 'none';
-    if(iPanel && iList) iPanel.style.display = (iList.innerHTML && instrVisible) ? 'block' : 'none';
     
     const it = document.getElementById('instr-toggle'); if(it) it.textContent = instrVisible ? '[Hide]' : '[Show]';
     const td = document.getElementById('timerDisplay'); if(td) td.style.display = autoScanEnabled ? 'block' : 'none';
@@ -231,15 +254,14 @@ function manualResetScan() {
 function startAutoScanLoop() {
     if (autoScanTimer) clearInterval(autoScanTimer);
     timeLeft = 30;
-
-    displayElement = document.getElementById('timerDisplay');
     
     autoScanTimer = setInterval(() => {
-        if (!displayElement) displayElement = document.getElementById('timerDisplay');
-
+        displayElement = document.getElementById('timerDisplay');
+        
         if (!autoScanEnabled) { 
             if(display) display.style.display = 'none'; 
             clearInterval(autoScanTimer); 
+            autoScanTimer = null;
             return; 
         }
 
@@ -251,7 +273,6 @@ function startAutoScanLoop() {
 
         if (timeLeft <= 0) { 
             timeLeft = 30; 
-            isScanning = false; 
             startVerification(); 
         }
     }, 1000);
@@ -275,8 +296,11 @@ function forceInit() {
 
     picker.onchange = (e) => { 
         const sel = e.target.options[e.target.selectedIndex]; 
-        const cp = document.getElementById('customPort'); if(cp) cp.value = sel.value ? (sel.dataset.port || "") : ""; 
+        const cp = document.getElementById('customPort'); 
+        if(cp) cp.value = sel.value ? (sel.dataset.port || "") : ""; 
+        updateUI();
     };
+    
 
     if (defaultPreset && presets[defaultPreset]) { 
         activeServices = JSON.parse(JSON.stringify(presets[defaultPreset].svc || []));
@@ -313,4 +337,5 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
