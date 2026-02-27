@@ -210,8 +210,7 @@ async function startVerification(forceService = null) {
     isScanning = true;
     
     checkQueue.forEach(s => {
-        s.verified = false; 
-        s.lastStatus = `Checking ${s.port}...`;
+        if (!s.verified) s.lastStatus = `Checking ${s.port}...`;
     });
     updateUI(); 
 
@@ -230,10 +229,10 @@ async function startVerification(forceService = null) {
                     s.responseTime = Math.round(performance.now() - start);
                     resolve();
                 };
-                const timeout = setTimeout(() => done(false, 'Offline'), 1500);
+                const timeout = setTimeout(() => done(false, 'Offline'), 2000);
                 probe.onerror = () => done(true, 'Connected');
                 probe.onload = () => done(true, 'Connected');
-                probe.src = `http://127.0.0.1:${s.port}/ping?t=${Date.now()}`;
+                probe.src = `http://127.0.0.1:${s.port}/?t=${Date.now()}`;
                 document.head.appendChild(probe);
             });
         }));
@@ -342,6 +341,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
