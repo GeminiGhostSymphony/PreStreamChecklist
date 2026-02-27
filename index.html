@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <title>Stream Checklist & App Verifier</title>
     <link rel="stylesheet" href="https://geminighostsymphony.github.io/PreStreamChecklist/style.css">
+    <script>
+        const repoBase = "https://geminighostsymphony.github.io/PreStreamChecklist";
+        
+        function injectStyle() {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `${repoBase}/style.css?v=${Date.now()}`;
+            document.head.appendChild(link);
+        }
+        injectStyle();
+    </script>
 </head>
 <body>
   <!-- Web Setup Section -->
@@ -77,59 +88,37 @@
   </div>
 
   <script>
-    const CONFIG = {
-        engine: "https://geminighostsymphony.github.io/PreStreamChecklist/engine.js",
-        style: "https://geminighostsymphony.github.io/PreStreamChecklist/style.csss"
-    };
+    const engineUrl = "https://geminighostsymphony.github.io/PreStreamChecklist/engine.js";
 
-    async function boot() {
-        try {
-            // Fetch and inject JS
-            const resp = await fetch(CONFIG.engine);
-            const scriptText = await resp.text();
-            const scriptEl = document.createElement('script');
-            scriptEl.textContent = scriptText;
-            document.body.appendChild(scriptEl);
-
-            // Fetch and inject CSS 
-            const cssResp = await fetch(CONFIG.style);
-            const cssText = await cssResp.text();
-            const styleEl = document.createElement('style');
-            styleEl.textContent = cssText;
-            document.head.appendChild(styleEl);
-
-            // Show content
-            document.getElementById('loading-overlay').style.display = 'none';
+    function startEngine() {
+        const loader = document.createElement('script');
+        loader.src = `${engineUrl}?v=${Date.now()}`;
+        loader.onload = () => {
+            console.log("[SYSTEM] Engine Loaded.");
+            document.getElementById('loading-status').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
-            
-            // Trigger engine init if the script didn't auto-run
-            if (typeof renderChecklist === 'function') {
+            if(window.renderChecklist) {
                 renderChecklist();
                 updateUI();
             }
-        } catch (e) {
-            document.getElementById('loading-overlay').innerHTML = 
-                `<div style="color:red">Engine Load Failed.<br>Check your internet connection.</div>`;
-            console.error("Boot error:", e);
-        }
+        };
+        loader.onerror = () => {
+            document.getElementById('loading-status').innerHTML = "[ERROR] Engine Blocked. Check Internet or GitHub Pages HTTPS settings.";
+        };
+        document.body.appendChild(loader);
     }
 
     if (window.location.protocol !== 'file:') {
         document.getElementById('setup-view').style.display = 'block';
-        document.getElementById('tool-view').style.opacity = '0.3';
-        document.getElementById('tool-view').style.pointerEvents = 'none';
+        document.getElementById('tool-view').style.display = 'none';
     } else {
-        boot();
+        startEngine();
     }
 
     function downloadTool() {
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#setup-view').remove();
-        clone.querySelector('#tool-view').style.opacity = '1';
-        clone.querySelector('#tool-view').style.pointerEvents = 'auto';
-        clone.querySelector('#loading-overlay').style.display = 'block';
-        clone.querySelector('#main-content').style.display = 'none';
-        
+        clone.querySelector('#tool-view').style.display = 'block';
         const blob = new Blob([clone.outerHTML], { type: 'text/html' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -140,3 +129,4 @@
 </body>
 
 </html>
+
