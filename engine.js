@@ -130,7 +130,7 @@ function updateUI() {
     save();
 }
 
-async function startVerification() {
+async function startVerification(forceService = null) {
     if (isScanning) return;
     
     let checkQueue = [];
@@ -256,4 +256,5 @@ window.toggleDebug = (v) => { debugEnabled = v; save(); updateUI(); };
 window.addItem = addItem; window.bulkCheck = bulkCheck; window.toggleItem = toggleItem;
 window.setAsDefault = setAsDefault; window.deletePreset = deletePreset; window.clearAll = () => { if(confirm("Clear everything?")) { items=[]; activeServices=[]; renderChecklist(); updateUI(); } };
 window.toggleInstructions = () => { instrVisible = !instrVisible; updateUI(); };
+
 
