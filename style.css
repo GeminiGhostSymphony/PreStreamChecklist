@@ -35,10 +35,11 @@ code { background: rgba(150,150,150,0.2); padding: 2px 4px; border-radius: 4px; 
 /* Instructions Styling */
 .instr-panel {
     margin-top: 15px;
-    padding: 15px;
-    background: color-mix(in srgb, var(--accent) 8%, var(--panel));
-    border-radius: 8px;
-    border: 1px solid var(--accent);
+    padding: 10px 12px;
+    background: var(--panel);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
 }
 .instr-header {
     font-weight: 800;
@@ -48,12 +49,14 @@ code { background: rgba(150,150,150,0.2); padding: 2px 4px; border-radius: 4px; 
     margin-bottom: 10px;
     border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     padding-bottom: 5px;
+    user-select: none;
 }
 .instr-item {
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
-    line-height: 1.4;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    line-height: 1.5;
 }
 .instr-item:last-child {
     border-bottom: none;
@@ -97,3 +100,4 @@ select, input { background: var(--panel); color: var(--text); border: 1px solid 
 .instr-panel { margin-top: 15px; padding: 12px; background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 6px; border: 1px dashed var(--accent); font-size: 12px; display: none; }
 
 .toggle-link { cursor: pointer; text-decoration: underline; font-size: 11px; }
+
