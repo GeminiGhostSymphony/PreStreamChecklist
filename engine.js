@@ -1,10 +1,10 @@
 /* PreStreamChecklist Engine  */
 const setupHelp = { 
-    mixitup: "<b>MixItUp</b>: In the left sidebar, click Services, then scroll to Overlay. Copy the 4 digits after 'localhost' and paste as the port (typically Port 8111).", streamerbot: "<b>Streamer.bot</b>: In the left sidebar, click Servers/Clients, then WebSocket Server. Copy the Port and paste it in this tool (typically Port 8080). Click Start Server. Enabling Auto Start here in the future will also save you time.", veadotube: "<b>Veadotube</b>: Port may need updating. Click Program Settings in Veadotube Mini, ensure Websocket Server is On, then replace Port numbers with those after the ':' in the 'Serving At' field.", vts: "<b>VTube Studio</b>: Click Settings. Scroll down to VTube Studio Plugins and toggle Start API on. Copy the Port number (should be 8001 usually).", vtshr: "<b>vts-heartrate</b>: Click Settings. Scroll down to API Server Settings and copy the API Server Port (typically 8214). If you haven't already, be sure to click Start API Server." , spotify: "<b>Spotify</b>: Must Use Desktop App.", crowdcontrol: "<b>Crowd Control</b>: Port 58430.", sammi: "<b>SAMMI</b>: Port 9450.", voicemod: "<b>Voicemod</b>: Port 59129.", songify: "<b>Songify</b>: Click File, Settings, then Web server. Copy the web server port and paste it in here (typically 5001). Ensure 'Start Web Server' has been clicked on."
+    mixitup: "<b>MixItUp</b>: In the left sidebar, click Services, then scroll to Overlay. Copy the 4 digits after 'localhost' and paste as the port (typically Port 8111).", streamerbot: "<b>Streamer.bot</b>: In the left sidebar, click Servers/Clients, then WebSocket Server. Copy the Port and paste it in this tool (typically Port 8080). Click Start Server. Enabling Auto Start here in the future will also save you time.", vbridger: "<b>VBridger</b>: Port should be 3782." , veadotube: "<b>Veadotube</b>: Port may need updating. Click Program Settings in Veadotube Mini, ensure Websocket Server is On, then replace Port numbers with those after the ':' in the 'Serving At' field.", vts: "<b>VTube Studio</b>: Click Settings. Scroll down to VTube Studio Plugins and toggle Start API on. Copy the Port number (should be 8001 usually).", vtshr: "<b>vts-heartrate</b>: Click Settings. Scroll down to API Server Settings and copy the API Server Port (typically 8214). If you haven't already, be sure to click Start API Server." , spotify: "<b>Spotify</b>: Must Use Desktop App.", crowdcontrol: "<b>Crowd Control</b>: Port 58430.", sammi: "<b>SAMMI</b>: Port 9450.", voicemod: "<b>Voicemod</b>: Port 59129.", songify: "<b>Songify</b>: Click File, Settings, then Web server. Copy the web server port and paste it in here (typically 5001). Ensure 'Start Web Server' has been clicked on."
 };
 
 const serviceDefs = [ 
-    { key: 'mixitup', name: 'MixItUp', port: 8111 }, { key: 'streamerbot', name: 'Streamer.bot', port: 8080 }, { key: 'veadotube', name: 'Veadotube Mini', port: 57073 }, { key: 'vts', name: 'VTube Studio', port: 8001 }, { key: 'spotify', name: 'Spotify', port: 57621 }, { key: 'crowdcontrol', name: 'Crowd Control', port: 58430 }, { key: 'songify', name: 'Songify', port: 5001 }, { key: 'vbridger', name: 'VBridger', port: 8001 }, { key: 'vtshr', name: 'vts-heartrate', port: 8214 }, { key: 'sammi', name: 'SAMMI', port: 9450 }, { key: 'voicemod', name: 'Voicemod', port: 59129 }
+    { key: 'mixitup', name: 'MixItUp', port: 8111 }, { key: 'streamerbot', name: 'Streamer.bot', port: 8080 }, { key: 'veadotube', name: 'Veadotube Mini', port: 57073 }, { key: 'vts', name: 'VTube Studio', port: 8001 }, { key: 'spotify', name: 'Spotify', port: 57621 }, { key: 'crowdcontrol', name: 'Crowd Control', port: 58430 }, { key: 'songify', name: 'Songify', port: 5001 }, { key: 'vbridger', name: 'VBridger', port: 3782 }, { key: 'vtshr', name: 'vts-heartrate', port: 8214 }, { key: 'sammi', name: 'SAMMI', port: 9450 }, { key: 'voicemod', name: 'Voicemod', port: 59129 }
 ];
 
 const PREFIX = "ps_chk_GGS_";
@@ -361,6 +361,7 @@ window.clearAll = () => {
         updateUI(); 
     } 
 };
+
 
 
 
